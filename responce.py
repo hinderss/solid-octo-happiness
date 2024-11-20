@@ -1,3 +1,5 @@
+import argparse
+
 import osmnx as ox
 import networkx as nx
 import json
@@ -54,7 +56,6 @@ def generate_route_data(route: list, g: MultiDiGraph = None, start_coords: tuple
         total_distance += length
         total_duration += estimated_time
 
-
     return route_dict(total_distance, total_duration, streets, start_coords, end_coords)
 
 
@@ -92,17 +93,42 @@ def visualize(route: list, g: MultiDiGraph = None):
         nx.draw_networkx_edges(g, pos, edgelist=[(u, v)], alpha=0.5, arrowstyle='-|>')
         nx.draw_networkx_edge_labels(g, pos, edge_labels={(u, v): label})
 
-    # Показываем график
     plt.title("MultiDiGraph Visualization")
     plt.show()
 
 
-if __name__ == "__main__":
-    start_point = (53.911613, 27.595701)  # БГУИР корпус 5
-    end_point = (53.890696, 27.551166)  # ВОКЗАЛ
-
+def main(start_point, end_point, visualize_route, save_to_file):
     R, G = generate_route(start_point, end_point)
     route_data = generate_route_data(R, G, start_point, end_point)
 
     print(json.dumps(route_data, indent=4, ensure_ascii=False))
-    visualize(R, G)
+
+    if save_to_file:
+        with open("route_data.json", "w", encoding="utf-8") as f:
+            json.dump(route_data, f, ensure_ascii=False, indent=4)
+        print("Данные маршрута сохранены в файл 'route_data.json'.")
+
+    if visualize_route:
+        visualize(R, G)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Приложение для генерации маршрута между двумя точками.")
+
+    parser.add_argument("--start", "-s", type=str, required=True, help="Координаты начальной точки в формате 'lat,lon'")
+    parser.add_argument("--end", "-e", type=str, required=True, help="Координаты конечной точки в формате 'lat,lon'")
+
+    parser.add_argument("--visualize", "-v", action="store_true", help="Визуализировать маршрут")
+
+    parser.add_argument("--save", "-S", action="store_true", help="Сохранить данные маршрута в файл JSON")
+
+    args = parser.parse_args()
+
+    try:
+        start_point = tuple(map(float, args.start.split(',')))
+        end_point = tuple(map(float, args.end.split(',')))
+    except ValueError:
+        print("Ошибка: Убедитесь, что координаты указаны в формате 'lat,lon'")
+        exit(1)
+
+    main(start_point, end_point, visualize_route=args.visualize, save_to_file=args.save)
